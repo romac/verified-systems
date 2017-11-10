@@ -65,6 +65,10 @@ object tvar {
       TVar(id, Some(x))
     }
 
+    // def modify(f: BigInt => BigInt): TVar = {
+    //   TVar(id, value.map(f))
+    // }
+
     def empty: TVar = {
       require(nonEmpty)
       TVar(id, None())
@@ -153,23 +157,39 @@ object tvar {
   }
 
   val a     = TVar(1, None())
+  val b     = TVar(2, None())
   val p1    = Process(1)
   val p2    = Process(2)
 
-  val p1Ops = List(p1.take(a))
-  val p2Ops = List(p2.put(a, 42), p2.take(a))
+  val p1Ops = List(
+    p1.take(a)
+  )
 
-  def traces[A](p1: List[A], p2: List[A]): List[List[A]] = {
-    (subTraces(p1, p2) ++ subTraces(p2, p1)).unique
+  val p2Ops = List(
+    p2.put(a, 42),
+    p2.take(a)
+  )
+
+def zippers[A](list: List[A]): List[(List[A], A, List[A])] = {
+  def go(xs: List[A], l: List[A]): List[(List[A], A, List[A])] = l match {
+    case Nil() => Nil()
+    case y :: ys => (xs, y, ys) :: go(y :: xs, ys)
   }
 
-  def subTraces[A](p1: List[A], p2: List[A]): List[List[A]] = p1 match {
-    case Nil()   => List(p2)
-    case x :: xs => traces(xs, p2).map(x :: _)
-  }
+  go(List(), list)
+}
 
-  // val runs = force(traces(p1Ops, p2Ops))
-  val runs = traces(p1Ops, p2Ops)
+def interleavings[A](list: List[List[A]]): List[List[A]] = list match {
+  case Nil() => List(Nil())
+  case xss =>
+    for {
+      (xssL, h :: xs, xssR) <- zippers(xss)
+      sub = if (xs.isEmpty) Nil[List[A]]() else List(xs)
+      t <- interleavings(sub ++ xssL ++ xssR)
+    } yield h :: t
+}
+
+  val runs = force(interleavings(List(p1Ops, p2Ops)))
 
   def test = {
     runs == List(
