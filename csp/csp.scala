@@ -1,6 +1,5 @@
 
 import stainless.lang._
-import stainless.lang.eval._
 import stainless.collection._
 import stainless.annotation._
 
@@ -99,7 +98,6 @@ object tvar {
     ops: List[Op]
   ) {
 
-    @inline // speeds up verification
     def isDeadlocked: Boolean = {
       trace.nonEmpty && trace.last.isInstanceOf[Event.Deadlock]
     }
@@ -156,10 +154,10 @@ object tvar {
     }
   }
 
-  val a     = TVar(1, None())
-  val b     = TVar(2, None())
-  val p1    = Process(1)
-  val p2    = Process(2)
+  val a  = TVar(1, None())
+  val b  = TVar(2, None())
+  val p1 = Process(1)
+  val p2 = Process(2)
 
   val p1Ops = List(
     p1.take(a)
@@ -170,26 +168,36 @@ object tvar {
     p2.take(a)
   )
 
-def zippers[A](list: List[A]): List[(List[A], A, List[A])] = {
-  def go(xs: List[A], l: List[A]): List[(List[A], A, List[A])] = l match {
-    case Nil() => Nil()
-    case y :: ys => (xs, y, ys) :: go(y :: xs, ys)
+  def zippers[A](list: List[A]): List[(List[A], A, List[A])] = {
+    require(list.nonEmpty)
+
+    def go(xs: List[A], l: List[A]): List[(List[A], A, List[A])] = {
+      l match {
+        case Nil() => Nil()
+        case Cons(y, ys) => (xs, y, ys) :: go(y :: xs, ys)
+      }
+    }
+
+    go(List(), list)
+  } ensuring { _.nonEmpty }
+
+  def interleavings[A](list: List[List[A]]): List[List[A]] = list match {
+    case Nil() =>
+      List(Nil())
+
+    case xss =>
+      zippers(xss) flatMap {
+        case (_, Nil(), _) =>
+          List(Nil())
+
+        case (xssL, Cons(head, xs), xssR) =>
+          val sub = if (xs.isEmpty) Nil[List[A]]() else List(xs)
+          interleavings(sub ++ xssL ++ xssR) map (head :: _)
+      }
   }
 
-  go(List(), list)
-}
-
-def interleavings[A](list: List[List[A]]): List[List[A]] = list match {
-  case Nil() => List(Nil())
-  case xss =>
-    for {
-      (xssL, h :: xs, xssR) <- zippers(xss)
-      sub = if (xs.isEmpty) Nil[List[A]]() else List(xs)
-      t <- interleavings(sub ++ xssL ++ xssR)
-    } yield h :: t
-}
-
-  val runs = force(interleavings(List(p1Ops, p2Ops)))
+  @force
+  val runs = interleavings(List(p1Ops, p2Ops))
 
   def test = {
     runs == List(
@@ -211,8 +219,8 @@ def interleavings[A](list: List[List[A]]): List[List[A]] = list match {
     system.run.isDeadlocked
   }
 
-  def run1 = deadlocks(runs(0)).holds
-  def run2 = deadlocks(runs(1)).holds
-  def run3 = deadlocks(runs(2)).holds
+  @force def run1 = deadlocks(runs(0)).holds
+  @force def run2 = deadlocks(runs(1)).holds
+  @force def run3 = deadlocks(runs(2)).holds
 
 }
