@@ -11,7 +11,7 @@ object inter {
     def go(xs: List[A], l: List[A]): List[(List[A], A, List[A])] = {
       l match {
         case Nil() => Nil()
-        case Cons(y, ys) => (xs, y, ys) :: go(y :: xs, ys)
+        case y :: ys => (xs, y, ys) :: go(y :: xs, ys)
       }
     }
 
@@ -27,22 +27,23 @@ object inter {
         case (_, Nil(), _) =>
           List(Nil())
 
-        case (xssL, Cons(head, xs), xssR) =>
-          val sub = if (xs.isEmpty) Nil[List[A]]() else List(xs)
+        case (xssL, head :: xs, xssR) =>
+          val sub: List[List[A]] = List(xs).filterNot(_.isEmpty)
           interleavings(sub ++ xssL ++ xssR) map (head :: _)
       }
+
   }
 
   val list: List[List[BigInt]] = List(List(1), List(2), List(3))
 
   @force
-  val zipped = zippers(list)
+  def zipped() = zippers(list)
 
   @force
-  val interleaved = interleavings(list)
+  def interleaved() = interleavings(list)
 
   def zippedOk = {
-    zipped == List[(List[List[BigInt]], List[BigInt], List[List[BigInt]])](
+    zipped() == List[(List[List[BigInt]], List[BigInt], List[List[BigInt]])](
       (List(),List(1),List(List(2), List(3))),
       (List(List(1)),List(2),List(List(3))),
       (List(List(2), List(1)),List(3),List())
@@ -50,7 +51,7 @@ object inter {
   } holds
 
   def interleavedOk = {
-    interleaved == List[List[BigInt]](
+    interleaved() == List[List[BigInt]](
       List(1, 2, 3),
       List(1, 3, 2),
       List(2, 1, 3),

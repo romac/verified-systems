@@ -207,7 +207,6 @@ object tvar {
     )
   } holds
 
-  @inline
   def deadlocks(ops: List[Op]) = {
     val system = System(
       TVarMap(Map(a.id -> a)),
