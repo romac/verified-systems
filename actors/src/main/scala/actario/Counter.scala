@@ -63,8 +63,10 @@ object counter {
       spawn(BackupBehavior(Counter(0))) { backup =>
         spawn(PrimaryBehavior(backup, Counter(0))) { primary =>
           send(primary, Primary.Inc) {
+          send(primary, Primary.Inc) {
+          send(primary, Primary.Inc) {
             become(Behavior.Unhandled)
-          }
+          } } }
         }
       }
     }
@@ -75,9 +77,36 @@ object counter {
   @force
   val result = system.run(Nil())
 
+  def inv(bp: (BigInt, BigInt)): Boolean = bp._1 <= bp._2
+
+  @force
+  def invariant = {
+    val main = Name.Toplevel("main")
+    val backup = Name.Generated(1, main)
+    val primary = Name.Generated(2, main)
+
+    val init = (BigInt(0), BigInt(0))
+    val trace = result._2
+
+    System.invHolds(trace, init, inv) { case ((b, p), label) =>
+      label match {
+        case Label.Become(name, behav) if name == primary =>
+          val PrimaryBehavior(_, pc) = behav
+          (b, pc.value)
+
+        case Label.Become(name, behav) if name == backup =>
+          val BackupBehavior(bc) = behav
+          (bc.value, p)
+
+        case _ => (b, p)
+      }
+    }
+  }
+
   @extern
   def main(args: Array[String]): Unit = {
-    // println(result._2.toScala.mkString("\n"))
+    // println(result)
+    println(invariant)
   }
 
 }

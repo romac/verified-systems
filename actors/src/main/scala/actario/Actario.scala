@@ -9,9 +9,10 @@ sealed abstract class Name {
   @extern
   override def toString: String = this match {
     case Name.Toplevel(name) => name
-    case Name.Generated(num, parent) => s"$parent($num)"
+    case Name.Generated(num, parent) => s"$parent-$num"
   }
 }
+
 object Name {
   final case class Toplevel(name: String)               extends Name
   final case class Generated(num: BigInt, parent: Name) extends Name
@@ -85,7 +86,7 @@ final case class InFlight(
   msg: Msg
 )
 
-sealed abstract class Label {
+sealed abstract class Label { 
   @extern
   override def toString: String = Label.asString(this)
 }
@@ -181,22 +182,21 @@ final case class System(
 
   def run(trace: List[Label]): (System, List[Label]) = {
     step(trace) match {
-      case Some((next, nextTrace)) =>
-        next.run(nextTrace)
-
-      case _ =>
-        (this, trace)
-
+      case Some((next, nextTrace)) => next.run(nextTrace)
+      case None() => (this, trace)
     }
   }
 
   def step(trace: List[Label]): Option[(System, List[Label])] = inFlight.headOption map {
-    case inf @ InFlight(from, to, msg) =>
+    case inf @ InFlight(from, to, msg) if actorExists(to) =>
       val actor = actorNamed(to)
       val action = actor.behavior.receive(msg)
       val ctx = ActorContext(actor, List(Label.Receive(from, to, msg)))
       val (newSystem, newCtx) = eval(ctx, action)
       (newSystem.removeInFlight(inf), trace ++ newCtx.trace)
+
+    case inf =>
+      (this.removeInFlight(inf), trace)
   }
 
   def eval(ctx: ActorContext, action: Action): (System, ActorContext) = action match {
@@ -218,7 +218,8 @@ final case class System(
         .eval(ctx.updateSelf(next) + Label.Spawn(name), cont(name))
 
     case Action.Become(behavior) =>
-      val next = this.updateActor(ctx.self.become(behavior))
+      val me = actorNamed(ctx.self.name)
+      val next = updateActor(me.become(behavior))
       (next, ctx + Label.Become(ctx.self.name, behavior))
   }
 
@@ -236,66 +237,12 @@ object System {
       .send(guardianName, guardianName, NotUsed())
   }
 
+  def invHolds[A](trace: List[Label], init: A, inv: A => Boolean)(next: (A, Label) => A) = {
+    trace.foldLeft((inv(init), init)) { case ((acc, state), label) =>
+      val nextState = next(state, label)
+      (acc && inv(nextState), nextState)
+    }
+  }
+
 }
-
-  // def transitionTo(label: Label): System = label match {
-  //   case Label.Receive(to, from, msg) =>
-  //     require {
-  //       actorExists(to) && actorExists(from)
-  //       inFlight.contains(InFlight(to, from, msg))
-  //     }
-
-  //     val toActor = actorNamed(to)
-
-  //     val Action.Become(behav) = toActor.nextAction
-  //     val nextAction = behav.receive(msg)
-  //     val nextActor = Actor(toActor.name, nextAction, toActor.nextNum)
-
-  //     this.updateActor(nextActor)
-  //         .removeInFlight(InFlight(to, from, msg))
-
-  //   case Label.Send(from, to, msg) =>
-  //     require(actorExists(to) && actorExists(from))
-
-  //     val newInFlight = InFlight(to, from, msg)
-  //     val fromActor = actorNamed(from)
-  //     val nextActor = fromActor.nextAction match {
-  //       case Action.Send(t, m, next) if t == to && m == msg =>
-  //         Actor(fromActor.name, next, fromActor.nextNum)
-
-  //       case _ => fromActor
-  //     }
-
-  //     this.addInFlight(newInFlight)
-  //         .updateActor(nextActor)
-
-  //   case Label.Spawn(name @ Name.Generated(n, parent)) =>
-  //     require(actorExists(parent) && !actorExists(name))
-
-  //     val parentActor = actorNamed(parent)
-  //     parentActor.nextAction match {
-  //       case Action.Spawn(behav, cont) =>
-  //         val newActor = Actor(name, Action.Become(behav), 0)
-  //         val nextActor = Actor(parentActor.name, cont(name), parentActor.nextNum + 1)
-  //         this.addActor(newActor).updateActor(nextActor)
-
-  //       case _ => this
-  //     }
-
-  //   case Label.Spawn(_) =>
-  //     this // Impossible
-
-  //   case Label.Self(me) =>
-  //     require(actorExists(me))
-
-  //     val meActor = actorNamed(me)
-  //     val nextActor = meActor.nextAction match {
-  //       case Action.Self(cont) =>
-  //         Actor(meActor.name, cont(me), meActor.nextNum)
-
-  //       case _ => meActor
-  //     }
-
-  //     this.updateActor(nextActor)
-  // }
 
