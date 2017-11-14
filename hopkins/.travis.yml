@@ -1,0 +1,13 @@
+language: scala
+jdk: oraclejdk7
+sudo: false
+scala:
+  - 2.11.8
+
+before_script:
+  - git clone https://github.com/romac/stainless.git
+  - pushd stainless && git checkout constructor-boxing && sbt compile && popd
+
+script:
+  - make ReplicatedCounter STAINLESS=./stainless/bin/stainless-scalac
+
