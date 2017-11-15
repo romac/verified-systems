@@ -52,36 +52,21 @@ package object hopkins {
 
   case class ActorSystem(
     behaviors: CMap[ActorId, Behavior],
-    inFlightMsgs: List[Packet]
+    inboxes: CMap[(ActorId, ActorId), List[Msg]]
   ) {
 
-    @inline
-    def hasInFlightMsgs: Boolean = {
-      inFlightMsgs.nonEmpty
-    }
+    def step(from: ActorId, to: ActorId): ActorSystem = {
+      inboxes(from -> to) match {
+        case Nil() => this
+        case Cons(msg, msgs) =>
+          val (newBehavior, toSend) = deliverMessage(to, msg)
 
-    @extern
-    def run: ActorSystem = {
-      val next = step
-      if (!next.hasInFlightMsgs) next
-      else next.run
-    }
+          val newBehaviors = behaviors.updated(to, newBehaviors)
+          val newInboxes = toSend.foldLeft(inboxes.updated(from -> to, msgs)) {
+            case (acc, Packet(dest, m)) => acc.updated(to -> dest, acc(to -> dest) :+ m)
+          }
 
-    def step: ActorSystem = {
-      inFlightMsgs match {
-        case Nil() =>
-          ActorSystem(behaviors, Nil())
-
-        case packet :: rest =>
-          // println(s"${packet.payload} -> ${packet.dest}")
-          val (newBehavior, toSend) = deliverMessage(packet.dest, packet.payload)
-          // println(s"${packet.dest} ./ $newBehavior")
-          // println(s"${packet.dest} :: $toSend")
-
-          ActorSystem(
-            behaviors.updated(packet.dest, newBehavior),
-            rest ++ toSend
-          )
+          ActorSystem(newBehaviors, newInboxes)
       }
     }
 
