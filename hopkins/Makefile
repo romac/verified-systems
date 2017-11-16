@@ -1,5 +1,5 @@
 
-FILES := $(shell find src -name '*.scala' -type f)
+FILES := $(shell find src/main/scala/stainless src/main/scala/hopkins -name '*.scala' -type f)
 
 ARGS :=
 TIMEOUT := 5
@@ -24,5 +24,5 @@ endif
 STAINLESS_OPTIONS := $(STAINLESS_OPTIONS) $(ARGS)
 
 %:
-	$(STAINLESS) $(STAINLESS_OPTIONS) $(FILES) examples/$@.scala
+	$(STAINLESS) $(STAINLESS_OPTIONS) $(FILES) src/main/scala/examples/$@.scala
 
