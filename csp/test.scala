@@ -4,7 +4,7 @@ import stainless.annotation._
 import stainless.collection._
 
 object inter {
-
+  // just the identity function on List[List[A]]
   def foo[A](list: List[List[A]]): List[List[A]] = {
     list flatMap {
       case Nil() =>
@@ -14,12 +14,7 @@ object inter {
     }
   }
 
-  val list: List[List[BigInt]] = List(List(1), List(2), List(3))
-
   @force
-  def test = {
-    foo(list)
-  }
-
+  def test = foo(List(List(1), List(2), List(3)))
 }
 
