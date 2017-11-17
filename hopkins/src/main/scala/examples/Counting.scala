@@ -54,8 +54,10 @@ object counting {
   }
 
   def isSorted(list: List[Msg]): Boolean = list match {
+    case Nil() => true
+    case Cons(Deliver(_), Nil()) => true
     case Cons(Deliver(Counter(a)), rest@Cons(Deliver(Counter(b)), xs)) => a < b && isSorted(rest)
-    case _ => true
+    case _ => false // we also reject if the list contains other messages than Deliver
   }
 
   def invariant(s: ActorSystem): Boolean = {
@@ -64,11 +66,11 @@ object counting {
         case (PrimBehav(p), BackBehav(b)) =>
           val bInbox = s.inboxes((Primary(), Backup()))
           p.value >= b.value && isSorted(bInbox) && bInbox.forall {
-            case Deliver(Counter(i)) => p.value > i
+            case Deliver(Counter(i)) => p.value >= i
             case _ => true
           }
 
-          case _ => false
+        case _ => false
       }
     }
   }
