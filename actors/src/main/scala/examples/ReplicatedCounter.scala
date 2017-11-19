@@ -47,11 +47,30 @@ object replicated {
     }
   }
 
+  case class Counting(counter: Counter) extends Behavior {
+    def processMsg(msg: Msg)(implicit ctx: ActorContext): Behavior = msg match {
+      case Inc => Counting(counter.increment)
+    }
+  }
+
+  case class Replicated(underlying: Behavior, replica: ActorRef) extends Behavior {
+    def processMsg(msg: Msg)(implicit ctx: ActorContext): Behavior = {
+      replica ! msg
+      Replicated(underlying.processMsg(msg), replica)
+    }
+  }
+
+  case object Primary extends ActorRef
+  case object Backup  extends ActorRef
+
+  case object Inc extends Msg
+
   def invariant(s: ActorSystem): Boolean = {
-    s.inboxes((Backup(), Backup())).isEmpty && {
-      (s.behaviors(Primary()), s.behaviors(Backup())) match {
-        case (PrimBehav(p), BackBehav(b)) =>
-          p.value == b.value + s.inboxes(Primary() -> Backup()).length
+    s.inboxes(Backup -> Backup).isEmpty &&
+    s.inboxes(Backup -> Primary).isEmpty && {
+      (s.behaviors(Primary), s.behaviors(Backup)) match {
+        case (Replicated(Counting(p), Backup), Counting(b)) =>
+          p.value == b.value + s.inboxes(Primary -> Backup).length
 
         case _ => false
       }
