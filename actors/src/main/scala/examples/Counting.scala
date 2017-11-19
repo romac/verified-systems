@@ -101,25 +101,10 @@ object counting {
 
     s.inboxes(Primary() -> Backup()) match {
       case Nil() => s.step(Primary(), Backup()) == s
-      case Cons(Deliver(_), rest) => lemma_onDeliver(s)
-    }
-  } holds
-
-  def lemma_onDeliver(s: ActorSystem): Boolean = {
-    require {
-      val inbox = s.inboxes(Primary() -> Backup())
-      invariant(s) &&
-      inbox.nonEmpty &&
-      inbox.head.isInstanceOf[Deliver]
-    }
-
-    assert(validBehaviors(s))
-
-    val Deliver(c) = s.inboxes(Primary() -> Backup()).head
-
-    s.step(Primary(), Backup()).behaviors(Backup()) match {
-      case BackBehav(b) => b.value == c.value
-      case _ => true
+      case Cons(Deliver(c), rest) =>
+        assert(lemma_sameBehaviors(s, Primary(), Backup()))
+        val BackBehav(b) = s.step(Primary(), Backup()).behaviors(Backup())
+        b.value == c.value
     }
   } holds
 
