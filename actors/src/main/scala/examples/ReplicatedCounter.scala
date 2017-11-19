@@ -32,8 +32,8 @@ object replicated {
 
   }
 
-  case class Primary() extends ActorId
-  case class Backup()  extends ActorId
+  case class Primary() extends ActorRef
+  case class Backup()  extends ActorRef
 
   case class Inc() extends Msg
 
@@ -61,7 +61,7 @@ object replicated {
     }
   }
 
-  def theorem(s: ActorSystem, from: ActorId, to: ActorId): Boolean = {
+  def theorem(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
     require(invariant(s))
     val newSystem = s.step(from, to)
     invariant(newSystem)
