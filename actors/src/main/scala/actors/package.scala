@@ -17,7 +17,10 @@ package object actors {
     }
   }
 
-  abstract class ActorRef {
+  case class ActorRef(name: String) {
+
+    require(name.bigLength > 0)
+
     def !(msg: Msg)(implicit ctx: ActorContext): Unit = {
       ctx.send(this, msg)
     }

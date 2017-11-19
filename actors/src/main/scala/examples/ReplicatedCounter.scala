@@ -2,7 +2,6 @@
 package actors
 
 import stainless.lang._
-import stainless.proof._
 import stainless.collection._
 import stainless.annotation._
 
@@ -10,29 +9,23 @@ import scala.language.postfixOps
 
 object replicated {
 
-  case class PrimBehav(counter: Counter) extends Behavior {
+  val primary = ActorRef("primary")
+  val backup = ActorRef("backup")
 
-    override
+  case class Primary(counter: Counter) extends Behavior {
     def processMsg(msg: Msg)(implicit ctx: ActorContext): Behavior = msg match {
       case Inc() =>
-        Backup() ! Inc()
-        PrimBehav(counter.increment)
+        backup ! Inc()
+        Primary(counter.increment)
     }
   }
 
-  case class BackBehav(counter: Counter) extends Behavior {
-
-    override
+  case class Backup(counter: Counter) extends Behavior {
     def processMsg(msg: Msg)(implicit ctx: ActorContext): Behavior = msg match {
       case Inc() =>
-        BackBehav(counter.increment)
+        Backup(counter.increment)
     }
-
-
   }
-
-  case class Primary() extends ActorRef
-  case class Backup()  extends ActorRef
 
   case class Inc() extends Msg
 
@@ -50,10 +43,10 @@ object replicated {
   }
 
   def invariant(s: ActorSystem): Boolean = {
-    s.inboxes((Backup(), Backup())).isEmpty && {
-      (s.behaviors(Primary()), s.behaviors(Backup())) match {
-        case (PrimBehav(p), BackBehav(b)) =>
-          p.value == b.value + s.inboxes(Primary() -> Backup()).length
+    s.inboxes(backup -> backup).isEmpty && {
+      (s.behaviors(primary), s.behaviors(backup)) match {
+        case (Primary(p), Backup(b)) =>
+          p.value == b.value + s.inboxes(primary -> backup).length
 
         case _ => false
       }
