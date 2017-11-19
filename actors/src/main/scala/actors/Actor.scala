@@ -8,7 +8,7 @@ import stainless.annotation._
 
 import scala.language.postfixOps
 
-package object hopkins {
+package object actors {
 
   abstract class Msg
 

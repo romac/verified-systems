@@ -1,5 +1,5 @@
 
-FILES := $(shell find src/main/scala/stainless src/main/scala/hopkins -name '*.scala' -type f)
+FILES := $(shell find src/main/scala/stainless src/main/scala/actors -name '*.scala' -type f)
 
 ARGS :=
 TIMEOUT := 5

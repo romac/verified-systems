@@ -1,5 +1,5 @@
 
-name := "typed-actors"
+name := "actors"
 
 version := "1.0.0-SNAPSHOT"
 
