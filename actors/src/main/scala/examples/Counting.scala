@@ -2,7 +2,6 @@
 package actors
 
 import stainless.lang._
-import stainless.lang.utils._
 import stainless.proof._
 import stainless.collection._
 import stainless.annotation._
@@ -27,15 +26,17 @@ object counting {
 
     override
     def processMsg(msg: Msg)(implicit ctx: ActorContext): Behavior = msg match {
-      case Deliver(c) => BackBehav(c)
+      case Deliver(c) =>
+        BackBehav(c)
+
       case _ => Behavior.same
     }
 
 
   }
 
-  case class Primary() extends ActorId
-  case class Backup()  extends ActorId
+  case class Primary() extends ActorRef
+  case class Backup()  extends ActorRef
 
   case class Inc() extends Msg
   case class Deliver(c: Counter) extends Msg
@@ -60,25 +61,66 @@ object counting {
     case _ => false // we also reject if the list contains other messages than Deliver
   }
 
-  def invariant(s: ActorSystem): Boolean = {
-    s.inboxes((Backup(), Backup())).isEmpty && {
-      (s.behaviors(Primary()), s.behaviors(Backup())) match {
-        case (PrimBehav(p), BackBehav(b)) =>
-          val bInbox = s.inboxes((Primary(), Backup()))
-          p.value >= b.value && isSorted(bInbox) && bInbox.forall {
-            case Deliver(Counter(i)) => p.value >= i
-            case _ => true
-          }
+  def validBehaviors(s: ActorSystem): Boolean = {
+    s.behaviors(Primary()).isInstanceOf[PrimBehav] &&
+    s.behaviors(Backup()).isInstanceOf[BackBehav]
+  }
 
-        case _ => false
+  def invariant(s: ActorSystem): Boolean = {
+    validBehaviors(s) &&
+    s.inboxes(Primary() -> Primary()).isEmpty &&
+    s.inboxes(Backup() -> Backup()).isEmpty &&
+    s.inboxes(Backup() -> Primary()).isEmpty && {
+
+      val PrimBehav(p) = s.behaviors(Primary())
+      val BackBehav(b) = s.behaviors(Backup())
+      val bInbox = s.inboxes(Primary() -> Backup())
+
+      p.value >= b.value && isSorted(bInbox) && bInbox.forall {
+        case Deliver(Counter(i)) => p.value >= i
+        case _ => true
       }
     }
   }
 
-  def theorem(s: ActorSystem, from: ActorId, to: ActorId): Boolean = {
+  def theorem(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
     require(invariant(s))
     val newSystem = s.step(from, to)
+    assert(lemma(s))
     invariant(newSystem)
+  } holds
+
+  def lemma_sameBehaviors(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
+    require(invariant(s))
+    assert(validBehaviors(s.step(Primary(), Backup())))
+    validBehaviors(s.step(from, to))
+  } holds
+
+  def lemma(s: ActorSystem): Boolean = {
+    require(invariant(s))
+
+    s.inboxes(Primary() -> Backup()) match {
+      case Nil() => s.step(Primary(), Backup()) == s
+      case Cons(Deliver(_), rest) => lemma_onDeliver(s)
+    }
+  } holds
+
+  def lemma_onDeliver(s: ActorSystem): Boolean = {
+    require {
+      val inbox = s.inboxes(Primary() -> Backup())
+      invariant(s) &&
+      inbox.nonEmpty &&
+      inbox.head.isInstanceOf[Deliver]
+    }
+
+    assert(validBehaviors(s))
+
+    val Deliver(c) = s.inboxes(Primary() -> Backup()).head
+
+    s.step(Primary(), Backup()).behaviors(Backup()) match {
+      case BackBehav(b) => b.value == c.value
+      case _ => true
+    }
   } holds
 
 }
