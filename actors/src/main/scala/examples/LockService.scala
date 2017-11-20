@@ -92,12 +92,15 @@ object lock {
     (a != b) ==> !(hasLock(s, a) && hasLock(s, b))
   }
 
-  def locked(s: ActorSystem): Boolean = {
-    !forall { (a: ActorRef) =>
-      s.behaviors(a) match {
-        case AgentB(hasLock) => !hasLock
-        case _ => true
-      }
+  @inline
+  def exists[A](f: A => Boolean): Boolean = {
+    !forall((x: A) => !f(x))
+  }
+
+  def locked(s: ActorSystem): Boolean = exists { (a: ActorRef) =>
+    s.behaviors(a) match {
+      case AgentB(hasLock) => hasLock
+      case _ => false
     }
   }
 
@@ -107,7 +110,12 @@ object lock {
     waiting.nonEmpty
   }
 
-  def theorem(s: ActorSystem) = {
+  def theorem(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
+    require(invariant(s))
+    invariant(s.step(from, to))
+  } holds
+
+  def theorem_bis(s: ActorSystem) = {
     stepPreservesInvariant(invariant(_))
   } holds
 
