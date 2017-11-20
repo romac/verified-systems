@@ -21,7 +21,7 @@ object lock {
       case Server.Lock(agent) =>
         ServerB(agents :+ agent)
 
-      case Server.Unlock(agent) =>
+      case Server.Unlock(agent) if agents.nonEmpty =>
         val newAgents = agents.tail
         if (newAgents.nonEmpty) newAgents.head ! Agent.Grant
         ServerB(newAgents)

@@ -27,8 +27,6 @@ object replicated {
       case Inc() =>
         BackBehav(counter.increment)
     }
-
-
   }
 
   case class Primary() extends ActorRef
