@@ -107,10 +107,8 @@ object lock {
     waiting.nonEmpty
   }
 
-  def theorem(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
-    require(invariant(s))
-    val next = s.step(from, to)
-    invariant(next)
+  def theorem(s: ActorSystem) = {
+    stepPreservesInvariant(invariant(_))
   } holds
 
 }
