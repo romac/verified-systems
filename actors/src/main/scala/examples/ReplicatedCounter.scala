@@ -94,23 +94,24 @@ object replicated {
 
   case object Ack extends Msg
 
-  def repIncMsgs(inbox: List[Msg]): List[Msg] = inbox.filter {
-    case Replicate(Inc) => true
-    case _ => false
-  }
+  // def repIncMsgs(inbox: List[Msg]): List[Msg] = inbox.filter {
+  //   case Replicate(Inc) => true
+  //   case _ => false
+  // }
 
-  def incMsgs(inbox: List[Msg]): List[Msg] = inbox.filter {
-    case Inc => true
-    case _ => false
-  }
+  // def incMsgs(inbox: List[Msg]): List[Msg] = inbox.filter {
+  //   case Inc => true
+  //   case _ => false
+  // }
 
   def invariant(s: ActorSystem): Boolean = {
     s.inboxes(Backup -> Backup).isEmpty &&
     s.inboxes(Primary -> Primary).isEmpty && {
       (s.behaviors(Primary), s.behaviors(Backup)) match {
         case (Replicated(Counting(p), queue, Backup), Replica(Counting(b), Primary)) =>
-          val pendingInc = repIncMsgs(s.inboxes(Primary -> Backup)).length + incMsgs(queue).length
-          p.value == b.value + pendingInc
+          // val pendingInc = repIncMsgs(s.inboxes(Primary -> Backup)).length + incMsgs(queue).length
+          // p.value == b.value + pendingInc
+          p.value >= b.value
 
         case _ => false
       }
