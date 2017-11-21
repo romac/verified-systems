@@ -13,6 +13,8 @@ object lock {
   // The head of `agents` holds the lock, the tail are waiting for the lock
   case class ServerB(agents: List[ActorRef]) extends Behavior {
 
+    def isLocked: Boolean = agents.nonEmpty
+
     def processMsg(msg: Msg)(implicit ctx: ActorContext): Behavior = msg match {
       case Server.Lock(agent) if agents.isEmpty =>
         agent ! Agent.Grant
@@ -78,13 +80,23 @@ object lock {
   } holds
 
   def invariant(s: ActorSystem): Boolean = {
-    noMsgstoSelf(s) && validBehaviors(s) && mutex(s) && ifLockedThenWaiting(s)
+    noMsgstoSelf(s) && validBehaviors(s) && mutex(s) &&
+    forall { (a: ActorRef) => hasLockThenHead(s, a) }
   }
 
   def hasLock(s: ActorSystem, a: ActorRef): Boolean = {
     s.behaviors(a) match {
       case AgentB(hasLock) => hasLock
       case _ => false
+    }
+  }
+
+  def hasLockThenHead(s: ActorSystem, a: ActorRef): Boolean = {
+    hasLock(s, a) ==> {
+      s.behaviors(Server()) match {
+        case ServerB(Cons(head, _)) => head == a
+        case _ => false
+      }
     }
   }
 
@@ -97,26 +109,9 @@ object lock {
     !forall((x: A) => !f(x))
   }
 
-  def locked(s: ActorSystem): Boolean = exists { (a: ActorRef) =>
-    s.behaviors(a) match {
-      case AgentB(hasLock) => hasLock
-      case _ => false
-    }
-  }
-
-  def ifLockedThenWaiting(s: ActorSystem) = {
-    require(validBehaviors(s) && locked(s))
-    val ServerB(waiting) = s.behaviors(Server())
-    waiting.nonEmpty
-  }
-
   def theorem(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
     require(invariant(s))
     invariant(s.step(from, to))
-  } holds
-
-  def theorem_bis(s: ActorSystem) = {
-    stepPreservesInvariant(invariant(_))
   } holds
 
 }
