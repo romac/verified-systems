@@ -11,9 +11,22 @@ package object actors {
 
   case class Packet(dest: ActorRef, payload: Msg)
 
-  case class ActorContext(self: ActorRef, var toSend: List[Packet]) {
+  case class ActorContext(
+    self: ActorRef,
+    var nextActorId: BigInt,
+    var toSend: List[Packet],
+    var toSpawn: List[(ActorRef, Behavior)]
+  ) {
+
     def send(to: ActorRef, msg: Msg): Unit = {
       toSend = toSend :+ Packet(to, msg)
+    }
+
+    def spawn(behavior: Behavior): ActorRef = {
+      val id = Generated(nextActorId, self)
+      nextActorId = nextActorId + 1
+      toSpawn = toSpawn :+ (id, behavior)
+      id
     }
   }
 
@@ -22,6 +35,11 @@ package object actors {
       ctx.send(this, msg)
     }
   }
+
+  case class Toplevel(id: String)              extends ActorRef
+  case class Generated(id: BigInt, parent: ActorRef) extends ActorRef
+
+  case object Main extends ActorRef
 
   def stepPreservesInvariant(inv: ActorSystem => Boolean): Boolean =
     forall { (s: ActorSystem, from: ActorRef, to: ActorRef) =>
