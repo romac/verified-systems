@@ -7,10 +7,13 @@ import stainless.annotation._
 import scala.language.postfixOps
 
 case class ActorSystem(
-  behaviors: CMap[ActorRef, Behavior],
-  inboxes: CMap[(ActorRef, ActorRef), List[Msg]],
-  nextActorId: CMap[ActorRef, BigInt]
+  name: String,
+  behaviors: CMap[ActorRef, Behavior] = CMap(_ => Behavior.stopped),
+  inboxes: CMap[(ActorRef, ActorRef), List[Msg]] = CMap(_ => List()),
+  nextActorId: CMap[ActorRef, BigInt] = CMap(_ => 1)
 ) {
+
+  def run(): Unit = {}
 
   def step(from: ActorRef, to: ActorRef): ActorSystem = {
     inboxes(from -> to) match {
@@ -29,6 +32,7 @@ case class ActorSystem(
         }
 
         ActorSystem(
+          name,
           newBehaviors,
           newInboxes,
           nextActorId.updated(to, nextId)
@@ -52,7 +56,7 @@ case class ActorSystem(
 
   def send(to: ActorRef, msg: Msg): ActorSystem = {
     val inbox = inboxes(Main -> to) :+ msg
-    ActorSystem(behaviors, inboxes.updated(Main -> to, inbox), nextActorId)
+    ActorSystem(name, behaviors, inboxes.updated(Main -> to, inbox), nextActorId)
   }
 
 }

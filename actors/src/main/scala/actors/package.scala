@@ -36,7 +36,7 @@ package object actors {
     }
   }
 
-  case class Toplevel(id: String)              extends ActorRef
+  case class Toplevel(id: String)                    extends ActorRef
   case class Generated(id: BigInt, parent: ActorRef) extends ActorRef
 
   case object Main extends ActorRef
