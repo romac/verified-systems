@@ -107,8 +107,10 @@ object registry {
   }
 
   def validMessages(s: ActorSystem): Boolean = {
-    noMsgToSelf(s, Main) && noMsgToSelf(s, Registry) &&
-    noMsgToSelf(s, w1) && noMsgToSelf(s, w1) &&
+    noMsgToSelf(s, Main) &&
+    noMsgToSelf(s, Registry) &&
+    noMsgToSelf(s, w1) &&
+    noMsgToSelf(s, w1) &&
     (s.inboxes(Main -> Registry).forall {
       case RegistryB.Register(id) => id == Main
       case _ => false
@@ -148,18 +150,18 @@ object registry {
     assert(validMessages(s.step(Registry, Registry)))  // timeout
     assert(validBehaviors(s.step(w1, w1)))             // timeout
     assert(validMessages(s.step(w1, w1)))              // timeout
-    assert(validBehaviors(s.step(w2, w2)))
-    assert(validMessages(s.step(w2, w2)))
+    assert(validBehaviors(s.step(w2, w2)))             // timeout
+    assert(validMessages(s.step(w2, w2)))              // timeout
     assert(validBehaviors(s.step(Main, Registry)))     // timeout
     assert(validMessages(s.step(Main, Registry)))      // timeout
     assert(validBehaviors(s.step(Main, w1)))           // timeout
     assert(validMessages(s.step(Main, w1)))            // timeout
-    assert(validBehaviors(s.step(Main, w2)))
-    assert(validMessages(s.step(Main, w2)))
+    assert(validBehaviors(s.step(Main, w2)))           // timeout
+    assert(validMessages(s.step(Main, w2)))            // timeout
     assert(validBehaviors(s.step(w1, Registry)))       // timeout
     assert(validMessages(s.step(w1, Registry)))        // timeout
-    assert(validBehaviors(s.step(w2, Registry)))
-    assert(validMessages(s.step(w2, Registry)))
+    assert(validBehaviors(s.step(w2, Registry)))       // timeout
+    assert(validMessages(s.step(w2, Registry)))        // timeout
     invariant(s.step(from, to))
   } holds
 
