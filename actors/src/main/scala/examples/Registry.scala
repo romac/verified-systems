@@ -10,8 +10,8 @@ import scala.language.postfixOps
 
 object registry {
 
-  val Main     = Toplevel("main")
-  val Registry = Toplevel("registry")
+  case object Main extends ActorRef("main", None())
+  case object Registry extends ActorRef("registry", None())
 
   object MainB {
     case object Init extends Msg
@@ -26,8 +26,8 @@ object registry {
       case Init if !initialized =>
         registry ! RegistryB.Register(ctx.self)
 
-        val w1 = ctx.spawn(WorkerB(false))
-        val w2 = ctx.spawn(WorkerB(false))
+        val w1 = ctx.spawn(WorkerB(false), "worker-1")
+        val w2 = ctx.spawn(WorkerB(false), "worker-2")
 
         w1 ! WorkerB.Init(registry)
         w2 ! WorkerB.Init(registry)
@@ -76,8 +76,8 @@ object registry {
     s.behaviors(a).isInstanceOf[WorkerB]
   }
 
-  val w1 = Generated(1, Main)
-  val w2 = Generated(2, Main)
+  val w1 = Child("worker-1", Main)
+  val w2 = Child("worker-2", Main)
 
   def validBehaviors(s: ActorSystem): Boolean = {
     s.behaviors(Main).isInstanceOf[MainB] &&

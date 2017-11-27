@@ -10,11 +10,14 @@ import scala.language.postfixOps
 
 object counting {
 
+  case class Primary() extends ActorRef("primary")
+  case class Backup() extends ActorRef("backup")
+
   case class PrimBehav(counter: Counter) extends Behavior {
 
     override
     def processMsg(msg: Msg)(implicit ctx: ActorContext): Behavior = msg match {
-      case Inc() =>
+      case Inc =>
         Backup() ! Deliver(counter.increment)
         PrimBehav(counter.increment)
 
@@ -35,10 +38,7 @@ object counting {
 
   }
 
-  case class Primary() extends ActorRef
-  case class Backup()  extends ActorRef
-
-  case class Inc() extends Msg
+  case object Inc extends Msg
   case class Deliver(c: Counter) extends Msg
 
   case class Counter(value: BigInt) {
@@ -66,7 +66,12 @@ object counting {
     s.behaviors(Backup()).isInstanceOf[BackBehav]
   }
 
+  def validRef(ref: ActorRef): Boolean = {
+    ref == Primary() || ref == Backup()
+  }
+
   def invariant(s: ActorSystem): Boolean = {
+    forall((ref: ActorRef) => validRef(ref)) &&
     validBehaviors(s) &&
     s.inboxes(Primary() -> Primary()).isEmpty &&
     s.inboxes(Backup() -> Backup()).isEmpty &&
@@ -84,14 +89,16 @@ object counting {
   }
 
   def theorem(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
-    require(invariant(s))
+    require(invariant(s) && validRef(from) && validRef(to))
+
     val newSystem = s.step(from, to)
     assert(lemma(s))
     invariant(newSystem)
   } holds
 
   def lemma_sameBehaviors(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
-    require(invariant(s))
+    require(invariant(s) && validRef(from) && validRef(to))
+
     assert(validBehaviors(s.step(Primary(), Backup())))
     validBehaviors(s.step(from, to))
   } holds

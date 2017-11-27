@@ -1,6 +1,4 @@
 
-package akkashim
-
 import stainless.lang._
 import stainless.proof._
 import stainless.collection._
@@ -8,7 +6,7 @@ import stainless.annotation._
 
 import scala.language.postfixOps
 
-import akka.actor.ActorRef
+import akkashim._
 
 object registry {
 

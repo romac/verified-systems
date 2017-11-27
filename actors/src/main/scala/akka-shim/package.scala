@@ -1,6 +1,4 @@
 
-package akkashim
-
 import stainless.lang._
 import stainless.proof._
 import stainless.collection._
@@ -9,6 +7,10 @@ import stainless.annotation._
 import scala.language.postfixOps
 
 import akka.actor
+
+package object akkashim {
+
+type ActorRef = actor.ActorRef
 
 abstract class Msg
 
@@ -61,5 +63,7 @@ abstract class ActorSystem(val name: String) {
   }
 
   def run(): Unit
+
+}
 
 }

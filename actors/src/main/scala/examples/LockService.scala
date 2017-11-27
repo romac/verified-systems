@@ -52,13 +52,13 @@ object lock {
     }
   }
 
-  case class Server() extends ActorRef
+  case class Server() extends ActorRef("server")
   object Server {
     case class Lock(agent: ActorRef) extends Msg
     case class Unlock(agent: ActorRef) extends Msg
   }
 
-  case class Agent(id: BigInt) extends ActorRef
+  case class Agent(id: BigInt) extends ActorRef("agent-" + id)
   object Agent {
     case object Lock extends Msg
     case object Unlock extends Msg

@@ -10,12 +10,15 @@ import scala.language.postfixOps
 
 object replicated {
 
+  case class Primary() extends ActorRef("primary")
+  case class Backup() extends ActorRef("backup")
+
   case class PrimBehav(counter: Counter) extends Behavior {
 
     override
     def processMsg(msg: Msg)(implicit ctx: ActorContext): Behavior = msg match {
-      case Inc() =>
-        Backup() ! Inc()
+      case Inc =>
+        Backup() ! Inc
         PrimBehav(counter.increment)
     }
   }
@@ -24,15 +27,12 @@ object replicated {
 
     override
     def processMsg(msg: Msg)(implicit ctx: ActorContext): Behavior = msg match {
-      case Inc() =>
+      case Inc =>
         BackBehav(counter.increment)
     }
   }
 
-  case class Primary() extends ActorRef
-  case class Backup()  extends ActorRef
-
-  case class Inc() extends Msg
+  case object Inc extends Msg
 
   case class Counter(value: BigInt) {
     require(value >= 0)
@@ -47,8 +47,19 @@ object replicated {
     }
   }
 
+  @inline
+  def validRef(ref: ActorRef): Boolean = {
+    ref == Primary() || ref == Backup()
+  }
+
+  @inline
+  def noMsgToSelf(s: ActorSystem, ref: ActorRef): Boolean = {
+    s.inboxes(ref -> ref).isEmpty
+  }
+
   def invariant(s: ActorSystem): Boolean = {
-    s.inboxes((Backup(), Backup())).isEmpty && {
+    noMsgToSelf(s, Backup()) &&
+    forall((ref: ActorRef) => validRef(ref)) && {
       (s.behaviors(Primary()), s.behaviors(Backup())) match {
         case (PrimBehav(p), BackBehav(b)) =>
           p.value == b.value + s.inboxes(Primary() -> Backup()).length
@@ -59,7 +70,7 @@ object replicated {
   }
 
   def theorem(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
-    require(invariant(s))
+    require(invariant(s) && validRef(from) && validRef(to))
     val newSystem = s.step(from, to)
     invariant(newSystem)
   } holds
