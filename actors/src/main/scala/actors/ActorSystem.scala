@@ -62,9 +62,14 @@ case class ActorSystem(
     behaviors(id) == Behavior.stopped
   }
 
-  def send(to: ActorRef, msg: Msg): ActorSystem = {
-    val inbox = inboxes(Main -> to) :+ msg
-    ActorSystem(behaviors, inboxes.updated(Main -> to, inbox), trace)
+  def send(from: ActorRef, to: ActorRef, msg: Msg): ActorSystem = {
+    val inbox = inboxes(from -> to) :+ msg
+    ActorSystem(behaviors, inboxes.updated(from -> to, inbox), trace)
+  }
+
+  def sendNow(from: ActorRef, to: ActorRef, msg: Msg): ActorSystem = {
+    val inbox = msg :: inboxes(from -> to)
+    ActorSystem(behaviors, inboxes.updated(from -> to, inbox), trace)
   }
 
   def transition(trans: Transition): ActorSystem = trans match {
