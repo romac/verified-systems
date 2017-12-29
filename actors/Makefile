@@ -15,10 +15,14 @@ ifneq ($(NOCACHE),1)
 STAINLESS_OPTIONS := --vc-cache $(STAINLESS_OPTIONS)
 endif
 
+ifeq ($(PARTIAL),1)
+STAINLESS_OPTIONS := --partial-eval --assume-checked $(STAINLESS_OPTIONS)
+endif
+
 ifeq ($(TERMINATION),1)
-STAINLESS_OPTIONS := --termination --debug=forcing,termination $(STAINLESS_OPTIONS)
+STAINLESS_OPTIONS := --termination --debug=termination $(STAINLESS_OPTIONS)
 else
-STAINLESS_OPTIONS := --verification --debug=forcing,verification $(STAINLESS_OPTIONS)
+STAINLESS_OPTIONS := --verification --debug=verification $(STAINLESS_OPTIONS)
 endif
 
 STAINLESS_OPTIONS := $(STAINLESS_OPTIONS) $(ARGS)

@@ -38,22 +38,16 @@ case class ActorSystem(
           case (acc, Packet(dest, m)) => acc.updated(to -> dest, acc(to -> dest) :+ m)
         }
 
-        ActorSystem(newBehaviors, newInboxes, trace ++ trans)
+        ActorSystem(newBehaviors, newInboxes, trans :: trace)
     }
   }
 
-  def deliverMessage(to: ActorRef, from: ActorRef, msg: Msg): (Behavior, List[Packet], List[Transition]) = {
+  def deliverMessage(to: ActorRef, from: ActorRef, msg: Msg): (Behavior, List[Packet], Transition) = {
     val behavior = behaviors(to)
 
     val ctx = ActorContext(to, Nil())
     val nextBehavior = behavior.processMsg(msg)(ctx)
-
-    val trans = List(
-      // Transition.receive(from, to, msg),
-      Transition.become(to, nextBehavior)
-    ) ++ ctx.toSend.map {
-      case Packet(dest, msg) => Transition.send(to, dest, msg)
-    }
+    val trans = Transition(from, to, msg, nextBehavior, ctx.toSend)
 
     (nextBehavior, ctx.toSend, trans)
   }
@@ -70,18 +64,6 @@ case class ActorSystem(
   def sendNow(from: ActorRef, to: ActorRef, msg: Msg): ActorSystem = {
     val inbox = msg :: inboxes(from -> to)
     ActorSystem(behaviors, inboxes.updated(from -> to, inbox), trace)
-  }
-
-  def transition(trans: Transition): ActorSystem = trans match {
-    case Become(ref, behavior) =>
-      ActorSystem(behaviors.updated(ref, behavior), inboxes, trace :+ trans)
-
-    case Send(from, to, msg) =>
-      val inbox = inboxes(from -> to) :+ msg
-      ActorSystem(behaviors, inboxes.updated(from -> to, inbox), trace :+ trans)
-
-    case Receive(from, to, msg) =>
-      ActorSystem(behaviors, inboxes, trace :+ trans)
   }
 
 }

@@ -25,26 +25,19 @@ package object actors {
 
   case object Main extends ActorRef
 
-  def stepPreservesInvariant(inv: ActorSystem => Boolean): Boolean =
+  def stepPreservesInvariant(inv: ActorSystem => Boolean): Boolean = {
     forall { (s: ActorSystem, from: ActorRef, to: ActorRef) =>
       inv(s) ==> inv(s.step(from, to))
     }
-
-  sealed abstract class Transition
-  case class Send(from: ActorRef, to: ActorRef, msg: Msg)    extends Transition
-  case class Receive(from: ActorRef, to: ActorRef, msg: Msg) extends Transition
-  case class Become(ref: ActorRef, behavior: Behavior)       extends Transition
-
-  object Transition {
-    def send(from: ActorRef, to: ActorRef, msg: Msg): Transition =
-      Send(from, to, msg)
-
-    def receive(from: ActorRef, to: ActorRef, msg: Msg): Transition =
-      Receive(from, to, msg)
-
-    def become(ref: ActorRef, behavior: Behavior): Transition =
-      Become(ref, behavior)
   }
+
+  case class Transition(
+    from: ActorRef,
+    to: ActorRef,
+    msg: Msg,
+    newBehavior: Behavior,
+    toSend: List[Packet]
+  )
 
 }
 

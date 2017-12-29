@@ -41,38 +41,6 @@ object kv {
     })
   }
 
-  def lemma_serverStaysServer(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
-    require(invariant(s))
-
-    forall { (msg: Msg) =>
-      (to == Server) ==> {
-        s.deliverMessage(to, from, msg)._1.isInstanceOf[ServerB]
-      }
-    }
-  } holds
-
-  def lemma_mainStaysStopped(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
-    require(invariant(s))
-
-    forall { (msg: Msg) =>
-      (to == Main) ==> {
-        s.deliverMessage(to, from, msg)._1 == Behavior.stopped
-      }
-    }
-  } holds
-
-  def lemma_serverBStaysServerB(server: ServerB, msg: Msg): Boolean = {
-    val ctx = ActorContext(Server, Nil())
-    server.processMsg(msg)(ctx).isInstanceOf[ServerB]
-  } holds
-
-  def lemma_sameBehaviors(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
-    require(invariant(s))
-    assert(lemma_serverStaysServer(s, from, to))
-    assert(lemma_mainStaysStopped(s, from, to))
-    validBehaviors(s.step(from, to))
-  } holds
-
   def invariant(s: ActorSystem): Boolean = {
     noMsgsToSelf(s) && validBehaviors(s)
   }
@@ -82,23 +50,23 @@ object kv {
   }
 
   def setThenGet(init: ActorSystem, key: String, value: String): Boolean = {
-    require(invariant(init) && noMsgInFlight(init))
+    require(invariant(init) && noMsgInFlight(init) && init.trace.isEmpty)
 
     val res = init
       .send(Main, Server, Put(key, value))
       .send(Main, Server, Get(key, Main))
-      .step(Main, Server)
-      .step(Main, Server)
-      .step(Server, Main)
+      // .step(Main, Server)
+      // .step(Main, Server)
+      // .step(Server, Main)
+      //
 
-    check(res.inboxes(Server -> Main).nonEmpty) &&
-    check(res.inboxes(Server -> Main).head == Data(key, Some(value)))
+    val trace = res.trace
+    check(trace.nonEmpty)
   } holds
 
-  def theorem(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
-    require(invariant(s))
-    assert(lemma_sameBehaviors(s, from, to))
-    invariant(s.step(from, to))
-  } holds
+  // def theorem(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
+  //   require(invariant(s))
+  //   invariant(s.step(from, to))
+  // } holds
 
 }
