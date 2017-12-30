@@ -10,8 +10,8 @@ import scala.language.postfixOps
 
 object replicated {
 
-  case class Primary() extends ActorRef("primary")
-  case class Backup() extends ActorRef("backup")
+  case class Primary() extends ActorRef("primary", None())
+  case class Backup() extends ActorRef("backup", None())
 
   case class PrimBehav(counter: Counter) extends Behavior {
 
@@ -19,7 +19,7 @@ object replicated {
     def processMsg(msg: Msg)(implicit ctx: ActorContext): Behavior = msg match {
       case Inc =>
         Backup() ! Inc
-        PrimBehav(counter.increment)
+        PrimBehav(counter)
     }
   }
 
@@ -48,18 +48,12 @@ object replicated {
   }
 
   @inline
-  def validRef(ref: ActorRef): Boolean = {
-    ref == Primary() || ref == Backup()
-  }
-
-  @inline
   def noMsgToSelf(s: ActorSystem, ref: ActorRef): Boolean = {
     s.inboxes(ref -> ref).isEmpty
   }
 
   def invariant(s: ActorSystem): Boolean = {
-    noMsgToSelf(s, Backup()) &&
-    forall((ref: ActorRef) => validRef(ref)) && {
+    noMsgToSelf(s, Backup()) && {
       (s.behaviors(Primary()), s.behaviors(Backup())) match {
         case (PrimBehav(p), BackBehav(b)) =>
           p.value == b.value + s.inboxes(Primary() -> Backup()).length
@@ -69,9 +63,9 @@ object replicated {
     }
   }
 
-  def theorem(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
-    require(invariant(s) && validRef(from) && validRef(to))
-    val newSystem = s.step(from, to)
+  def theorem(s: ActorSystem): Boolean = {
+    require(invariant(s))
+    val newSystem = s.withInbox(Primary(), Primary(), Inc()).step(Primary(), Primary())
     invariant(newSystem)
   } holds
 

@@ -22,13 +22,8 @@ case class ActorSystem(
       case Cons(msg, msgs) =>
         val (newBehavior, toSend, toSpawn) = deliverMessage(to, from, msg)
 
-        val newBehaviors = toSpawn.foldLeft(behaviors.updated(to, newBehavior)) { case (acc, (id, behav)) =>
-          acc.updated(id, behav)
-        }
-
-        val newInboxes = toSend.foldLeft(inboxes.updated(from -> to, msgs)) {
-          case (acc, Packet(dest, m)) => acc.updated(to -> dest, acc(to -> dest) :+ m)
-        }
+        val newBehaviors = updateBehaviors(toSpawn, behaviors.updated(to, newBehavior))
+        val newInboxes = updateInboxes(to, toSend, inboxes.updated(from -> to, msgs))
 
         ActorSystem(
           name,
@@ -36,6 +31,20 @@ case class ActorSystem(
           newInboxes
        )
     }
+  }
+
+  def updateInboxes(from: ActorRef, toSend: List[Packet], inboxes: CMap[(ActorRef, ActorRef), List[Msg]]): CMap[(ActorRef, ActorRef), List[Msg]] = toSend match {
+    case Nil() =>
+      inboxes
+    case Cons(Packet(to, msg), tms) =>
+      updateInboxes(from, tms, inboxes.updated(from -> to, msg :: inboxes(from -> to)))
+  }
+
+  def updateBehaviors(toSpawn: List[(ActorRef, Behavior)], behaviors: CMap[ActorRef, Behavior]): CMap[ActorRef, Behavior] = toSpawn match {
+    case Nil() =>
+      behaviors
+    case Cons((ref, behav), rbs) =>
+      updateBehaviors(rbs, behaviors.updated(ref, behav))
   }
 
   def deliverMessage(to: ActorRef, from: ActorRef, msg: Msg): (Behavior, List[Packet], List[(ActorRef, Behavior)]) = {
@@ -47,13 +56,18 @@ case class ActorSystem(
     (nextBehavior, ctx.toSend, ctx.toSpawn)
   }
 
+  @inline
   def isStopped(id: ActorRef): Boolean = {
     behaviors(id) == Behavior.stopped
   }
 
   def send(from: ActorRef, to: ActorRef, msg: Msg): ActorSystem = {
-    val inbox = inboxes(from -> to) :+ msg
+    val inbox = msg :: inboxes(from -> to)
     ActorSystem(name, behaviors, inboxes.updated(from -> to, inbox))
+  }
+
+  def withInbox(from: ActorRef, to: ActorRef, msgs: List[Msg]): ActorSystem = {
+    ActorSystem(name, behaviors, inboxes.updated(from -> to, msgs))
   }
 
 }

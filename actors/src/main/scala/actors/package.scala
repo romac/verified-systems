@@ -17,7 +17,7 @@ package object actors {
     }
   }
 
-  case class Child(name: String, by: ActorRef) extends ActorRef(name, Some(by))
+  case class Child(name: String, getParent: ActorRef) extends ActorRef(name, Some(getParent))
 
   case class ActorContext(
     self: ActorRef,
@@ -26,12 +26,12 @@ package object actors {
   ) {
 
     def send(to: ActorRef, msg: Msg): Unit = {
-      toSend = toSend :+ Packet(to, msg)
+      toSend = Packet(to, msg) :: toSend
     }
 
     def spawn(behavior: Behavior, name: String): ActorRef = {
       val id: ActorRef = Child(name, self)
-      toSpawn = toSpawn :+ (id, behavior)
+      toSpawn = (id -> behavior) :: toSpawn
       id
     }
   }

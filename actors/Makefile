@@ -20,9 +20,9 @@ STAINLESS_OPTIONS := --partial-eval --assume-checked $(STAINLESS_OPTIONS)
 endif
 
 ifeq ($(TERMINATION),1)
-STAINLESS_OPTIONS := --termination --debug=termination $(STAINLESS_OPTIONS)
+STAINLESS_OPTIONS := --termination --debug=extraction,termination $(STAINLESS_OPTIONS)
 else
-STAINLESS_OPTIONS := --verification --debug=verification $(STAINLESS_OPTIONS)
+STAINLESS_OPTIONS := --verification --debug=extraction,verification $(STAINLESS_OPTIONS)
 endif
 
 STAINLESS_OPTIONS := $(STAINLESS_OPTIONS) $(ARGS)
