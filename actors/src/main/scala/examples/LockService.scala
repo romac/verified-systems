@@ -56,7 +56,12 @@ object lock {
     case class Unlock(agent: ActorRef) extends Msg
   }
 
-  case class Agent(id: BigInt) extends ActorRef
+  sealed abstract class AgentId
+  case object A extends AgentId
+  case object B extends AgentId
+  case object C extends AgentId
+
+  case class Agent(id: AgentId) extends ActorRef
   object Agent {
     case object Lock extends Msg
     case object Unlock extends Msg
@@ -69,7 +74,9 @@ object lock {
 
   def validBehaviors(s: ActorSystem): Boolean = {
     s.behaviors(Server()).isInstanceOf[ServerB] &&
-    forall { (a: Agent) => s.behaviors(a).isInstanceOf[AgentB] }
+    s.behaviors(Agent(A)).isInstanceOf[AgentB]  &&
+    s.behaviors(Agent(B)).isInstanceOf[AgentB]  &&
+    s.behaviors(Agent(C)).isInstanceOf[AgentB]
   }
 
   def lemma_sameBehaviors(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
@@ -78,18 +85,22 @@ object lock {
   } holds
 
   def invariant(s: ActorSystem): Boolean = {
-    noMsgstoSelf(s) && validBehaviors(s) && mutex(s) &&
-    forall { (a: Agent) => hasLockThenHead(s, a) }
+    noMsgstoSelf(s)              &&
+    validBehaviors(s)            &&
+    mutex(s)                     &&
+    hasLockThenHead(s, Agent(A)) &&
+    hasLockThenHead(s, Agent(B)) &&
+    hasLockThenHead(s, Agent(C))
   }
 
-  def hasLock(s: ActorSystem, a: Agent): Boolean = {
+  def hasLock(s: ActorSystem, a: ActorRef): Boolean = {
     s.behaviors(a) match {
       case AgentB(hasLock) => hasLock
       case _ => false
     }
   }
 
-  def hasLockThenHead(s: ActorSystem, a: Agent): Boolean = {
+  def hasLockThenHead(s: ActorSystem, a: ActorRef): Boolean = {
     hasLock(s, a) ==> {
       s.behaviors(Server()) match {
         case ServerB(Cons(head, _)) => head == a
@@ -98,7 +109,7 @@ object lock {
     }
   }
 
-  def mutex(s: ActorSystem): Boolean = forall { (a: Agent, b: Agent) =>
+  def mutex(s: ActorSystem): Boolean = forall { (a: ActorRef, b: ActorRef) =>
     (a != b) ==> !(hasLock(s, a) && hasLock(s, b))
   }
 
