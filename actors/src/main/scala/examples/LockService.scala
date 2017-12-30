@@ -13,8 +13,6 @@ object lock {
   // The head of `agents` holds the lock, the tail are waiting for the lock
   case class ServerB(agents: List[ActorRef]) extends Behavior {
 
-    def isLocked: Boolean = agents.nonEmpty
-
     def processMsg(msg: Msg)(implicit ctx: ActorContext): Behavior = msg match {
       case Server.Lock(agent) if agents.isEmpty =>
         agent ! Agent.Grant
@@ -81,17 +79,17 @@ object lock {
 
   def invariant(s: ActorSystem): Boolean = {
     noMsgstoSelf(s) && validBehaviors(s) && mutex(s) &&
-    forall { (a: ActorRef) => hasLockThenHead(s, a) }
+    forall { (a: Agent) => hasLockThenHead(s, a) }
   }
 
-  def hasLock(s: ActorSystem, a: ActorRef): Boolean = {
+  def hasLock(s: ActorSystem, a: Agent): Boolean = {
     s.behaviors(a) match {
       case AgentB(hasLock) => hasLock
       case _ => false
     }
   }
 
-  def hasLockThenHead(s: ActorSystem, a: ActorRef): Boolean = {
+  def hasLockThenHead(s: ActorSystem, a: Agent): Boolean = {
     hasLock(s, a) ==> {
       s.behaviors(Server()) match {
         case ServerB(Cons(head, _)) => head == a
@@ -100,13 +98,8 @@ object lock {
     }
   }
 
-  def mutex(s: ActorSystem): Boolean = forall { (a: ActorRef, b: ActorRef) =>
+  def mutex(s: ActorSystem): Boolean = forall { (a: Agent, b: Agent) =>
     (a != b) ==> !(hasLock(s, a) && hasLock(s, b))
-  }
-
-  @inline
-  def exists[A](f: A => Boolean): Boolean = {
-    !forall((x: A) => !f(x))
   }
 
   def theorem(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {

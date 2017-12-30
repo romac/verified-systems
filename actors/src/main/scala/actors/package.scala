@@ -13,7 +13,7 @@ package object actors {
 
   case class ActorContext(self: ActorRef, var toSend: List[Packet]) {
     def send(to: ActorRef, msg: Msg): Unit = {
-      toSend = toSend :+ Packet(to, msg)
+      toSend = Packet(to, msg) :: toSend
     }
   }
 

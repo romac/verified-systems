@@ -21,7 +21,7 @@ case class ActorSystem(
 
         val newBehaviors = behaviors.updated(to, newBehavior)
         val newInboxes = toSend.foldLeft(inboxes.updated(from -> to, msgs)) {
-          case (acc, Packet(dest, m)) => acc.updated(to -> dest, acc(to -> dest) :+ m)
+          case (acc, Packet(dest, m)) => acc.updated(to -> dest, m :: acc(to -> dest))
         }
 
         ActorSystem(newBehaviors, newInboxes)
