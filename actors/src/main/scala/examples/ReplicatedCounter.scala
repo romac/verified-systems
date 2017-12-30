@@ -10,13 +10,14 @@ import scala.language.postfixOps
 
 object replicated {
 
-  case class PrimBehav(counter: Counter) extends Behavior {
+  case class PrimBehav(backup: ActorRef, counter: Counter) extends Behavior {
+    require(backup == Backup())
 
     override
     def processMsg(msg: Msg)(implicit ctx: ActorContext): Behavior = msg match {
       case Inc() =>
-        Backup() ! Inc()
-        PrimBehav(counter.increment)
+        backup ! Inc()
+        PrimBehav(backup, counter.increment)
     }
   }
 
@@ -50,7 +51,7 @@ object replicated {
   def invariant(s: ActorSystem): Boolean = {
     s.inboxes((Backup(), Backup())).isEmpty && {
       (s.behaviors(Primary()), s.behaviors(Backup())) match {
-        case (PrimBehav(p), BackBehav(b)) =>
+        case (PrimBehav(_, p), BackBehav(b)) =>
           p.value == b.value + s.inboxes(Primary() -> Backup()).length
 
         case _ => false

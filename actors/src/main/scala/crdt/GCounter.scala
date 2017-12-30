@@ -4,6 +4,8 @@ import stainless.lang._
 import stainless.collection._
 import stainless.math.max
 
+import actors._
+
 case class Clock(value: BigInt) {
 
   require(value >= 0)
@@ -36,6 +38,10 @@ object Clock {
   @inline
   def zero: Clock = Clock(0)
 
+}
+
+implicit class ListOps[A](val list: List[A]) {
+  def hasNoDuplicates: Boolean = true
 }
 
 case class GCounter(shards: ClockMap, ids: List[ActorRef]) {

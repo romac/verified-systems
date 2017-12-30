@@ -8,7 +8,7 @@ import stainless.annotation._
 
 import scala.language.postfixOps
 
-object replicated {
+object transformer {
 
   case class Counter(value: BigInt) {
     require(value >= 0)
