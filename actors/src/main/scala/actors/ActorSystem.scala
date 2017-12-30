@@ -41,5 +41,9 @@ case class ActorSystem(
     behaviors(id) == Behavior.stopped
   }
 
+  def send(from: ActorRef, to: ActorRef, msg: Msg): ActorSystem = {
+    ActorSystem(behaviors, inboxes.updated(from -> to, List(msg)))
+  }
+
 }
 

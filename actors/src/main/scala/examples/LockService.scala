@@ -63,13 +63,9 @@ object lock {
 
   case class Agent(id: AgentId) extends ActorRef
   object Agent {
-    case object Lock extends Msg
+    case object Lock   extends Msg
     case object Unlock extends Msg
-    case object Grant extends Msg
-  }
-
-  def noMsgstoSelf(s: ActorSystem): Boolean = forall { (ref: ActorRef) =>
-    s.inboxes(ref -> ref).isEmpty
+    case object Grant  extends Msg
   }
 
   def validBehaviors(s: ActorSystem): Boolean = {
@@ -79,19 +75,10 @@ object lock {
     s.behaviors(Agent(C)).isInstanceOf[AgentB]
   }
 
-  def lemma_sameBehaviors(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
+  def sameBehaviors(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
     require(invariant(s))
     validBehaviors(s.step(from, to))
   } holds
-
-  def invariant(s: ActorSystem): Boolean = {
-    noMsgstoSelf(s)              &&
-    validBehaviors(s)            &&
-    mutex(s)                     &&
-    hasLockThenHead(s, Agent(A)) &&
-    hasLockThenHead(s, Agent(B)) &&
-    hasLockThenHead(s, Agent(C))
-  }
 
   def hasLock(s: ActorSystem, a: ActorRef): Boolean = {
     s.behaviors(a) match {
@@ -113,9 +100,40 @@ object lock {
     (a != b) ==> !(hasLock(s, a) && hasLock(s, b))
   }
 
-  def theorem(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
-    require(invariant(s))
-    invariant(s.step(from, to))
+  def invariant(s: ActorSystem): Boolean = {
+    validBehaviors(s)            &&
+    mutex(s)                     &&
+    hasLockThenHead(s, Agent(A)) &&
+    hasLockThenHead(s, Agent(B)) &&
+    hasLockThenHead(s, Agent(C))
+  }
+
+  def emptyInboxes(s: ActorSystem): Boolean = {
+    s.inboxes(Server() -> Agent(A)).isEmpty &&
+    s.inboxes(Server() -> Agent(B)).isEmpty &&
+    s.inboxes(Server() -> Agent(C)).isEmpty &&
+    s.inboxes(Agent(A) -> Server()).isEmpty &&
+    s.inboxes(Agent(B) -> Server()).isEmpty &&
+    s.inboxes(Agent(C) -> Server()).isEmpty &&
+    s.inboxes(Agent(A) -> Agent(A)).isEmpty &&
+    s.inboxes(Agent(A) -> Agent(B)).isEmpty &&
+    s.inboxes(Agent(A) -> Agent(C)).isEmpty &&
+    s.inboxes(Agent(B) -> Agent(A)).isEmpty &&
+    s.inboxes(Agent(B) -> Agent(B)).isEmpty &&
+    s.inboxes(Agent(B) -> Agent(C)).isEmpty &&
+    s.inboxes(Agent(C) -> Agent(A)).isEmpty &&
+    s.inboxes(Agent(C) -> Agent(B)).isEmpty &&
+    s.inboxes(Agent(C) -> Agent(C)).isEmpty
+  }
+
+  def theorem(s: ActorSystem): Boolean = {
+    require(invariant(s) && emptyInboxes(s))
+    val t = s
+      .send(Agent(A), Server(), Server.Lock(Agent(A)))
+      .step(Agent(A), Server())
+      .step(Server(), Agent(A))
+
+    invariant(t)
   } holds
 
 }
