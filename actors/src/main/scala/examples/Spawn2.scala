@@ -34,16 +34,12 @@ object spawn {
 
   case class Spawn() extends Msg
 
-  val childRef = Child("child", Primary())
-
   def invariant(s: ActorSystem): Boolean = {
     s.behaviors(Primary()) match {
       case BeforeB() =>
-        s.isStopped(childRef)
-
+        s.isStopped(Child("child", Primary()))
       case AfterB(child) =>
-        child == childRef &&
-        s.behaviors(childRef) == ChildB()
+        s.behaviors(child) == ChildB()
 
       case _ => false
     }
