@@ -112,7 +112,7 @@ object lock {
     s.inboxes(Server() -> Agent(A)).isEmpty &&
     s.inboxes(Server() -> Agent(B)).isEmpty &&
     s.inboxes(Server() -> Agent(C)).isEmpty &&
-    s.inboxes(Agent(A) -> Server()).isEmpty &&
+    // s.inboxes(Agent(A) -> Server()).isEmpty &&
     s.inboxes(Agent(B) -> Server()).isEmpty &&
     s.inboxes(Agent(C) -> Server()).isEmpty &&
     s.inboxes(Agent(A) -> Agent(A)).isEmpty &&
@@ -126,14 +126,9 @@ object lock {
     s.inboxes(Agent(C) -> Agent(C)).isEmpty
   }
 
-  def theorem(s: ActorSystem): Boolean = {
+  def theorem(s: ActorSystem, from: ActorRef, to: ActorRef): Boolean = {
     require(invariant(s) && emptyInboxes(s))
-    val t = s
-      .send(Agent(A), Server(), Server.Lock(Agent(A)))
-      .step(Agent(A), Server())
-      .step(Server(), Agent(A))
-
-    invariant(t)
+    invariant(s.step(Agent(A), Server()))
   } holds
 
 }
