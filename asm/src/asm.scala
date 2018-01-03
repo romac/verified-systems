@@ -40,11 +40,17 @@ object asm {
     Addi(Rbx, 10)  // rbx = rbx + 10
   )
 
+  // val init = State(Map(Rax -> 0, Rbx -> 0))
+
+  def test(init: State) = {
+    init.exec(prog) == init
+  } holds
+
   // Stainless yields: State(Map(Rax -> 0, Rbx -> 10))
-  def solution: State = {
-    choose { (state: State) =>
-      state.exec(prog).reg(Rbx) == 22
-    }
-  }
+  // def solution: State = {
+  //   choose { (state: State) =>
+  //     state.exec(prog).reg(Rbx) == 22
+  //   }
+  // }
 }
 
