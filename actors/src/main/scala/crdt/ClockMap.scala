@@ -5,12 +5,16 @@ import stainless.annotation._
 import stainless.collection._
 import stainless.math.max
 
-abstract class ClockMap {
+sealed abstract class ClockMap {
   def apply(k: ActorRef): Clock
   def updated(k: ActorRef, v: Clock): ClockMap
 
   def ===(that: ClockMap): Boolean = forall { (k: ActorRef) =>
     this(k) == that(k)
+  }
+
+  def <=(that: ClockMap): Boolean = forall { (k: ActorRef) =>
+    this(k) <= that(k)
   }
 
   def merge(that: ClockMap): ClockMap = {
@@ -59,6 +63,27 @@ object ClockMapTheorems {
   def ClockMap_merge_commutative(a: ClockMap, b: ClockMap): Boolean = {
     assert(ClockTheorems.Clock_merge_semilattice)
     a.merge(b) === b.merge(a)
+  } holds
+
+  def ClockMap_merge_monotonic(c1: ClockMap, c2: ClockMap): Boolean = {
+    val c3 = c1 merge c2
+    c1 <= c3 && c2 <= c3
+  } holds
+
+  def ClockMap_compare_refl(c1: ClockMap): Boolean = {
+    c1 <= c1
+  } holds
+
+  def ClockMap_merge_partialOrder: Boolean = {
+    forall((c1: ClockMap) => ClockMap_compare_refl(c1))
+    forall((c1: ClockMap, c2: ClockMap) => ClockMap_merge_monotonic(c1, c2))
+  } holds
+
+  def ClockMap_merge_semilattice: Boolean = {
+    forall((c1: ClockMap, c2: ClockMap) => ClockMap_merge_commutative(c1, c2)) &&
+    forall((c1: ClockMap) => ClockMap_merge_idempotent(c1)) &&
+    forall((c1: ClockMap, c2: ClockMap, c3: ClockMap) => ClockMap_merge_associative(c1, c2, c3)) &&
+    ClockMap_merge_partialOrder
   } holds
 
   @library

@@ -1,6 +1,7 @@
 package crdt
 
 import stainless.lang._
+import stainless.proof._
 import stainless.annotation._
 import stainless.collection._
 import stainless.math.max
@@ -23,15 +24,11 @@ case class GCounter(shards: ClockMap) {
   }
 
   def merge(that: GCounter): GCounter = {
-    GCounter(this.shards.merge(that.shards))
+    GCounter(this.shards merge that.shards)
   }
 
-  def compare(that: GCounter)(implicit ctx: ActorContext): Boolean = {
-    val smaller = ctx.actors.map { id =>
-      this.shards(id) <= that.shards(id)
-    }
-
-    smaller.exists(x => x)
+  def <=(that: GCounter): Boolean = {
+    this.shards <= that.shards
   }
 
   def ===(that: GCounter): Boolean = {
@@ -71,16 +68,22 @@ object GCounterTheorems {
 
   def GCounter_equals_sameValue(a: GCounter, b: GCounter)(implicit ctx: ActorContext): Boolean = {
     require(a === b && GCounter.validContext(ctx))
-    // assert(GCounter_equality(a, b))
+
+    val as = ctx.actors.map(id => a.shards(id).value)
+    val ab = ctx.actors.map(id => b.shards(id).value)
+
+    // assert(forall((id: ActorRef) => a.shards(id).value == b.shards(id).value))
+    assert(as == ab)
+
     a.value == b.value
   } holds
 
-  def GCounter_increment_homo_value(c: GCounter, n: BigInt, ids: List[BigInt])(implicit ctx: ActorContext): Boolean = {
-    require(n >= 0 && GCounter.validContext(ctx))
+  // def GCounter_increment_homo_value(c: GCounter, n: BigInt)(implicit ctx: ActorContext): Boolean = {
+  //   require(n >= 0 && GCounter.validContext(ctx))
 
-    assert(Clock_merge_semilattice)
-    (c + n).value == c.value + n
-  } holds
+  //   assert(ClockMap_merge_semilattice)
+  //   ((c + n).value == c.value + n)
+  // } holds
 
   @library
   def GCounter_equality(a: GCounter, b: GCounter): Boolean = {
