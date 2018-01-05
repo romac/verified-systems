@@ -4,8 +4,6 @@ import stainless.lang._
 import stainless.collection._
 import stainless.math.max
 
-// import actors._
-
 case class Clock(value: BigInt) {
 
   require(value >= 0)
@@ -67,8 +65,8 @@ object ClockTheorems {
   } holds
 
   def Clock_merge_semilattice: Boolean = {
-    forall((c1: Clock, c2: Clock)            => Clock_merge_commutative(c1, c2)) &&
-    forall((c1: Clock)                       => Clock_merge_idempotent(c1)) &&
+    forall((c1: Clock, c2: Clock)            => Clock_merge_commutative(c1, c2))     &&
+    forall((c1: Clock)                       => Clock_merge_idempotent(c1))          &&
     forall((c1: Clock, c2: Clock, c3: Clock) => Clock_merge_associative(c1, c2, c3)) &&
     Clock_merge_partialOrder
   } holds

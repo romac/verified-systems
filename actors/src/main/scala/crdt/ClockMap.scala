@@ -1,61 +1,71 @@
 package crdt
 
 import stainless.lang._
+import stainless.annotation._
 import stainless.collection._
 import stainless.math.max
 
-case class ClockMap(map: Map[ActorRef, Clock]) {
+abstract class ClockMap {
+  def apply(k: ActorRef): Clock
+  def updated(k: ActorRef, v: Clock): ClockMap
 
+  def ===(that: ClockMap): Boolean = forall { (k: ActorRef) =>
+    this(k) == that(k)
+  }
+
+  def merge(that: ClockMap): ClockMap = {
+    MergedClockMap(this, that)
+  }
+}
+
+case class SingleClockMap(map: Map[ActorRef, Clock]) extends ClockMap {
   def apply(k: ActorRef): Clock = {
     map.getOrElse(k, Clock.zero)
   }
 
   def updated(k: ActorRef, v: Clock): ClockMap = {
-    ClockMap(map.updated(k, v))
+    SingleClockMap(map.updated(k, v))
+  }
+}
+
+case class MergedClockMap(left: ClockMap, right: ClockMap) extends ClockMap {
+  def apply(k: ActorRef): Clock = {
+    left(k) merge right(k)
   }
 
-  def equalsForIds(to: ClockMap, ids: List[ActorRef]) = {
-    ids.foldLeft(true)((acc, id) => acc && (this.apply(id) == to.apply(id)))
+  def updated(k: ActorRef, v: Clock): ClockMap = {
+    MergedClockMap(left.updated(k, v), right.updated(k, v))
   }
-
 }
 
 object ClockMap {
-  def empty: ClockMap = ClockMap(Map.empty[ActorRef, Clock])
-
-  def merge(a: ClockMap, b: ClockMap, ids: List[ActorRef]): ClockMap = {
-    require(ids.isDistinct)
-
-    ids.foldLeft(ClockMap.empty) { case (acc, id) =>
-      val left  = a(id)
-      val right = b(id)
-      acc.updated(id, left merge right)
-    }
-  }
-
+  def empty: ClockMap = SingleClockMap(Map.empty[ActorRef, Clock])
 }
 
 object ClockMapTheorems {
 
   import ClockTheorems._
 
-  def ClockMap_merge_idempotent(a: ClockMap, ids: List[ActorRef]): Boolean = {
-    require(ids.nonEmpty && ids.isDistinct)
+  def ClockMap_merge_idempotent(a: ClockMap): Boolean = {
     assert(ClockTheorems.Clock_merge_semilattice)
-    ClockMap.merge(a, a, ids) == a
+    a.merge(a) === a
   } holds
 
-  def ClockMap_merge_assoc(a: ClockMap, b: ClockMap, c: ClockMap, ids: List[ActorRef]): Boolean = {
-    require(ids.nonEmpty && ids.isDistinct)
+  def ClockMap_merge_associative(a: ClockMap, b: ClockMap, c: ClockMap): Boolean = {
     assert(ClockTheorems.Clock_merge_semilattice)
-    ClockMap.merge(a, ClockMap.merge(b, c, ids), ids) == ClockMap.merge(ClockMap.merge(a, b, ids), c, ids)
+    a.merge(b.merge(c)) === a.merge(b).merge(c)
   } holds
 
-  def ClockMap_merge_commutative(a: ClockMap, b: ClockMap, ids: List[ActorRef]): Boolean = {
-    require(ids.nonEmpty && ids.isDistinct)
+  def ClockMap_merge_commutative(a: ClockMap, b: ClockMap): Boolean = {
     assert(ClockTheorems.Clock_merge_semilattice)
-    ClockMap.merge(a, b, ids) == ClockMap.merge(b, a, ids)
+    a.merge(b) === b.merge(a)
   } holds
+
+  @library
+  def ClockMap_equality(a: ClockMap, b: ClockMap): Boolean = {
+    require(a === b)
+    a == b
+  }
 
 }
 
