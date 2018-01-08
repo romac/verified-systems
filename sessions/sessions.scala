@@ -7,9 +7,12 @@ package object sessions {
 
   case class Duration(millis: Long)
 
+  type In[A]  = Linear[InChan[A]]
+  type Out[A] = Linear[OutChan[A]]
+
   @linear
   @library
-  class In[A] {
+  class InChan[A] {
 
     @extern
     def receive(implicit d: Duration): Linear[A] = {
@@ -24,7 +27,7 @@ package object sessions {
 
   @linear
   @library
-  class Out[A] {
+  class OutChan[A] {
 
     @extern
     def send(msg: A): Unit = {
@@ -36,7 +39,7 @@ package object sessions {
     }
 
     @extern @unchecked
-    def !![B](h: Linear[Out[B]] => A): Linear[In[B]] = {
+    def !![B](h: Out[B] => A): In[B] = {
       val (cin, cout) = create[B]()
       this ! h(cout)
       cin
@@ -50,7 +53,7 @@ package object sessions {
     // }
 
     @extern @unchecked
-    def create[B](): (Linear[In[B]], Linear[Out[B]]) = {
+    def create[B](): (In[B], Out[B]) = {
       ???
     }
   }
