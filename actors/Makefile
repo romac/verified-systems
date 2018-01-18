@@ -11,12 +11,12 @@ ifeq ($(WATCH),1)
 STAINLESS_OPTIONS := --watch $(STAINLESS_OPTIONS)
 endif
 
-ifneq ($(NOCACHE),1)
-STAINLESS_OPTIONS := --vc-cache $(STAINLESS_OPTIONS)
+ifneq ($(CACHE),1)
+STAINLESS_OPTIONS := --vc-cache=false $(STAINLESS_OPTIONS)
 endif
 
 ifeq ($(PARTIAL),1)
-STAINLESS_OPTIONS := --partial-eval --assume-checked $(STAINLESS_OPTIONS)
+STAINLESS_OPTIONS := --partial-eval $(STAINLESS_OPTIONS)
 endif
 
 ifeq ($(TERMINATION),1)

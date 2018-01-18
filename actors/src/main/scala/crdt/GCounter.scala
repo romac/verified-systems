@@ -66,17 +66,38 @@ object GCounterTheorems {
     a.merge(b) === b.merge(a)
   } holds
 
-  def GCounter_equals_sameValue(a: GCounter, b: GCounter)(implicit ctx: ActorContext): Boolean = {
-    require(a === b && GCounter.validContext(ctx))
-
-    val as = ctx.actors.map(id => a.shards(id).value)
-    val ab = ctx.actors.map(id => b.shards(id).value)
-
-    // assert(forall((id: ActorRef) => a.shards(id).value == b.shards(id).value))
-    assert(as == ab)
-
-    a.value == b.value
+  def GCounter_merge_monotonic(c1: GCounter, c2: GCounter): Boolean = {
+    val c3 = c1 merge c2
+    c1 <= c3 && c2 <= c3
   } holds
+
+  def GCounter_compare_refl(c1: GCounter): Boolean = {
+    c1 <= c1
+  } holds
+
+  def GCounter_merge_partialOrder: Boolean = {
+    forall((c1: GCounter) => GCounter_compare_refl(c1))
+    forall((c1: GCounter, c2: GCounter) => GCounter_merge_monotonic(c1, c2))
+  } holds
+
+  def GCounter_merge_semilattice: Boolean = {
+    forall((c1: GCounter, c2: GCounter) => GCounter_merge_commutative(c1, c2)) &&
+    forall((c1: GCounter) => GCounter_merge_idempotent(c1)) &&
+    forall((c1: GCounter, c2: GCounter, c3: GCounter) => GCounter_merge_associative(c1, c2, c3)) &&
+    GCounter_merge_partialOrder
+  } holds
+
+  // def GCounter_equals_sameValue(a: GCounter, b: GCounter)(implicit ctx: ActorContext): Boolean = {
+  //   require(a === b && GCounter.validContext(ctx))
+
+  //   val as = ctx.actors.map(id => a.shards(id).value)
+  //   val ab = ctx.actors.map(id => b.shards(id).value)
+
+  //   // assert(forall((id: ActorRef) => a.shards(id).value == b.shards(id).value))
+  //   assert(as == ab)
+
+  //   a.value == b.value
+  // } holds
 
   // def GCounter_increment_homo_value(c: GCounter, n: BigInt)(implicit ctx: ActorContext): Boolean = {
   //   require(n >= 0 && GCounter.validContext(ctx))
@@ -85,11 +106,11 @@ object GCounterTheorems {
   //   ((c + n).value == c.value + n)
   // } holds
 
-  @library
-  def GCounter_equality(a: GCounter, b: GCounter): Boolean = {
-    require(a === b)
-    a == b
-  }
+  // @library
+  // def GCounter_equality(a: GCounter, b: GCounter): Boolean = {
+  //   require(a === b)
+  //   a == b
+  // }
 
 }
 
